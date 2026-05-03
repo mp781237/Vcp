@@ -23,6 +23,9 @@ dev = [
     "jupyter>=1.0",
     "ipykernel>=6",
 ]
+dashboard = [
+    "streamlit>=1.30",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

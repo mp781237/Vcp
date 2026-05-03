@@ -44,6 +44,29 @@ python -m scripts.backtest \
 jupyter lab notebooks/01_explore.ipynb
 ```
 
+### Web Dashboard（Streamlit）
+
+本地：
+
+```bash
+pip install -e ".[dashboard]"
+streamlit run streamlit_app.py
+```
+
+瀏覽器會打開 http://localhost:8501，三個 tab：
+- **Screener**：選日期 + min VCP + 是否要求 CANSLIM 全過 → 跑、看結果、下載 CSV
+- **Stock Detail**：輸入 ticker → 看 Trend Template / CANSLIM / VCP 各條件 pass/fail、K 線圖（含 SMA 50/150/200）、完整 JSON 診斷
+- **Backtest**：選日期區間 + 調停損/停利/部位數 → 看 CAGR / Max DD / Sharpe / equity curve / trade log
+
+部署到 Streamlit Community Cloud（免費）：
+
+1. 把這個 repo push 到 GitHub
+2. 到 https://share.streamlit.io/ 登入
+3. New app → 選這個 repo + branch + `streamlit_app.py`
+4. Deploy。約 2 分鐘後給你公開網址，手機/任何瀏覽器都能用
+
+注意：Streamlit Cloud 容器的 cache 重啟會清空，第一次用首頁會慢 2-5 分鐘抓資料。
+
 ## 設計決策
 
 - **243 交易日**（不是 252）—— 台股實際年交易日
