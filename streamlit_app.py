@@ -27,7 +27,7 @@ from vcp.backtest import run as run_backtest
 from vcp.data import load, load_universe
 from vcp.indicators import sma
 from vcp.metrics import summary
-from vcp.screener import ScreenerConfig, explain, screen_at
+from vcp.screener import ScreenerConfig, explain, screen_at, screen_recent_at
 
 st.set_page_config(page_title="台股 VCP + CANSLIM 儀表板", layout="wide")
 st.title("台股 VCP + CANSLIM-lite Dashboard")
@@ -41,6 +41,14 @@ st.caption(
 def cached_screen(date_iso: str, min_vcp: float, all_canslim: bool) -> pd.DataFrame:
     cfg = ScreenerConfig(min_vcp_score=min_vcp, require_all_canslim=all_canslim)
     return screen_at(date_iso, cfg=cfg)
+
+
+@st.cache_data(ttl=3600, show_spinner="掃過去 N 天的 VCP 訊號中...")
+def cached_recent_screen(
+    date_iso: str, lookback: int, min_vcp: float, all_canslim: bool
+) -> pd.DataFrame:
+    cfg = ScreenerConfig(min_vcp_score=min_vcp, require_all_canslim=all_canslim)
+    return screen_recent_at(date_iso, lookback_days=lookback, cfg=cfg)
 
 
 @st.cache_data(ttl=3600, show_spinner="計算診斷中...")
@@ -98,8 +106,8 @@ with st.sidebar:
     )
 
 
-tab_screen, tab_detail, tab_backtest = st.tabs(
-    ["📋 Screener", "🔍 Stock Detail", "📈 Backtest"]
+tab_screen, tab_recent, tab_detail, tab_backtest = st.tabs(
+    ["📋 Screener (今日)", "📅 Recent VCP (近 N 日)", "🔍 Stock Detail", "📈 Backtest"]
 )
 
 
@@ -132,6 +140,69 @@ with tab_screen:
             file_name=f"screen_{s_date.isoformat()}.csv",
             mime="text/csv",
         )
+
+
+with tab_recent:
+    st.subheader("過去 N 個交易日內出現過 VCP 訊號的股票")
+    st.caption(
+        "把所有 ticker 在最近 N 個交易日內逐日跑一次完整 screener，"
+        "只要其中任何一天通過就列出來。bars_ago=0 等同於今日 tab。"
+    )
+    rc1, rc2, rc3, rc4 = st.columns([1, 1, 1, 1])
+    r_date = rc1.date_input(
+        "As-of 日期",
+        pd.Timestamp("2024-12-31").date(),
+        max_value=pd.Timestamp.today().date(),
+        key="r_date",
+    )
+    r_lookback = rc2.number_input(
+        "Lookback（交易日）", min_value=1, max_value=120, value=30, key="r_lookback"
+    )
+    r_min_vcp = rc3.slider("最低 VCP score", 0.0, 1.0, 0.6, 0.05, key="r_min_vcp")
+    r_all_canslim = rc4.checkbox("L+S+N+M 全要過", value=False, key="r_all_canslim")
+
+    if st.button("Run recent scan", type="primary", key="run_recent"):
+        df = cached_recent_screen(
+            r_date.isoformat(), int(r_lookback), r_min_vcp, r_all_canslim
+        )
+        st.session_state["recent_result"] = df
+
+    df_recent = st.session_state.get("recent_result")
+    if df_recent is None:
+        st.info("點上面的按鈕開始")
+    elif df_recent.empty:
+        st.warning(
+            "Lookback 內沒有任何股票通過全部條件。試著拉長 lookback、放寬 VCP 門檻，"
+            "或關掉「L+S+N+M 全要過」。"
+        )
+    else:
+        n_today = (df_recent["bars_ago"] == 0).sum()
+        st.success(f"{len(df_recent)} 檔在最近 {r_lookback} 個交易日內曾觸發（其中 {n_today} 檔今日仍符合）")
+
+        df_show = df_recent.copy()
+        df_show["move_since_signal"] = df_show["move_since_signal"].apply(lambda x: f"{x:.1%}")
+        df_show["now_extended"] = df_show["now_extended"].map({True: "⚠️", False: ""})
+
+        st.dataframe(df_show, use_container_width=True, hide_index=True)
+        st.download_button(
+            "下載 CSV",
+            df_recent.to_csv(index=False).encode("utf-8-sig"),
+            file_name=f"recent_vcp_{r_date.isoformat()}_lookback{r_lookback}.csv",
+            mime="text/csv",
+        )
+
+        with st.expander("欄位說明"):
+            st.markdown(
+                """
+- **signal_date**：最近一次觸發的交易日
+- **bars_ago**：距離 as-of 多少個交易日（0 = 當日仍符合）
+- **signal_close**：訊號日的收盤
+- **current_close**：as-of 日的收盤
+- **move_since_signal**：訊號日到 as-of 的漲跌幅
+- **now_extended**：⚠️ 表示目前 close 已 > SMA50 × 1.25（追高風險）
+- **vcp_score / contractions**：訊號日當天的 VCP 評分與每段回檔
+                """
+            )
 
 
 with tab_detail:

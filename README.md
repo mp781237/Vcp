@@ -24,6 +24,9 @@ python -m scripts.screen --date 2024-12-31 --output out/screen.csv
 # 嚴格模式：要求 L+S+N+M 全過
 python -m scripts.screen --date 2024-12-31 --all-canslim
 
+# Recent 模式：列出最近 30 個交易日內曾觸發 VCP 訊號的股票
+python -m scripts.screen --date 2024-12-31 --recent 30
+
 # 對單檔做完整診斷（看每個條件 pass/fail）
 python -m scripts.screen --date 2024-04-30 --explain 6531.TW
 ```

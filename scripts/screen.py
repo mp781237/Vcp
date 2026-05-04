@@ -13,7 +13,7 @@ import json
 import sys
 from pathlib import Path
 
-from vcp.screener import ScreenerConfig, explain, screen_at
+from vcp.screener import ScreenerConfig, explain, screen_at, screen_recent_at
 
 
 def main() -> int:
@@ -25,6 +25,13 @@ def main() -> int:
     p.add_argument("--all-canslim", action="store_true", help="Require all of L/S/N/M")
     p.add_argument("--refresh", action="store_true", help="Force re-download data")
     p.add_argument("--explain", default=None, help="Show diagnostic for a single ticker")
+    p.add_argument(
+        "--recent",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Look back N trading bars; list any ticker that triggered within that window",
+    )
     args = p.parse_args()
 
     if args.explain:
@@ -33,7 +40,16 @@ def main() -> int:
         return 0
 
     cfg = ScreenerConfig(min_vcp_score=args.min_vcp, require_all_canslim=args.all_canslim)
-    df = screen_at(args.date, universe_csv=args.universe, cfg=cfg, refresh=args.refresh)
+    if args.recent > 0:
+        df = screen_recent_at(
+            args.date,
+            lookback_days=args.recent,
+            universe_csv=args.universe,
+            cfg=cfg,
+            refresh=args.refresh,
+        )
+    else:
+        df = screen_at(args.date, universe_csv=args.universe, cfg=cfg, refresh=args.refresh)
 
     if df.empty:
         print(f"No matches for {args.date}.", file=sys.stderr)
