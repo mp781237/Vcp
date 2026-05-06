@@ -1,0 +1,30 @@
+# Data cache
+data/*.parquet
+data/cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# Outputs
+out/
+*.png
+!notebooks/*.png
+
+# Env
+.venv/
+venv/
+.env

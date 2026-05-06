@@ -1,0 +1,8 @@
+pandas>=2.0
+numpy>=1.24
+yfinance>=0.2.40
+scipy>=1.11
+pyarrow>=14
+mplfinance>=0.12.10b0
+matplotlib>=3.7
+streamlit>=1.30
